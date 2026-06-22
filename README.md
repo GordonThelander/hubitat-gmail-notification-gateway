@@ -10,6 +10,8 @@ Important Note
 
 Google imposes daily sending limits on Gmail accounts. When using this gateway, a standard Gmail account is typically limited to approximately 100 recipients per day. The limit applies to recipients, not messages. For example, sending one email to ten recipients counts as ten recipients against the daily quota.
 
+For most Hubitat use cases, 100 recipients per day is unlikely to be an issue unless the automation is particularly chatty or sending to multiple recipients for every event. That said, if someone is concerned about consuming quota on their personal Gmail account, there is nothing preventing them from creating a dedicated Gmail account specifically for home automation alerts. In fact, that can be a good practice as it separates automation traffic from personal email and makes it easier to manage notification volume independently.
+
 
 The design is deliberately simple:
 
