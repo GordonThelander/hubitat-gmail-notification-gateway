@@ -33,7 +33,7 @@ Hubitat does not send SMTP directly. Hubitat only performs an HTTPS POST to Goog
 | Google account | Gmail or Google Workspace account. |
 | Google Apps Script project | Used as the HTTPS webhook and email sender. |
 | Shared secret token | Same token must be configured in Apps Script and Hubitat. |
-| Recipient groups | Defined in Apps Script, for example `gordon`, `family`, `critical`. |
+| Recipient groups | Defined in Apps Script, for example `gordon`, `Family`, `Critical`. |
 
 ## Architecture
 
@@ -68,7 +68,7 @@ Security is handled by:
 | Recipient groups | Prevents Hubitat from sending to arbitrary email addresses. |
 | Apps Script recipient whitelist | Real email addresses are stored in Apps Script, not Hubitat. |
 | URL secrecy | The `/exec` URL should not be published publicly. |
-| Token rotation | Regenerate the token if it appears in logs, screenshots or shared code. |
+| Token rotation | Regenerate the token as required. |
 
 This design avoids creating an open mail relay. Hubitat sends a group name, not raw recipient addresses.
 
@@ -149,7 +149,7 @@ The URL must look like this:
 https://script.google.com/macros/s/AKfycbx................................../exec
 ```
 
-Use the `/exec` URL in Hubitat.
+Use the `/exec` URL in the Hubitat Driver on the Preferences Tab on the virtual child device.
 
 Do not use:
 
