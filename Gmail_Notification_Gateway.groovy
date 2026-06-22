@@ -40,8 +40,8 @@ metadata {
         input name: "recipientGroup",
               type: "text",
               title: "Recipient Group",
-              description: "Example: gordon, family, critical",
-              defaultValue: "gordon",
+              description: "Example: user, family, critical",
+              defaultValue: "user",
               required: true
 
         input name: "subjectPrefix",
