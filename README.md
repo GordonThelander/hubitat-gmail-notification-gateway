@@ -6,6 +6,11 @@ Hubitat notification driver for sending Gmail alerts via a Google Apps Script HT
 
 The Gmail Notification Gateway lets Hubitat send email notifications through a normal Hubitat `Notification` device without using paid messaging services such as SendGrid, Mailgun, SMTP2Go, Pushover or Twilio.
 
+Important Note
+
+Google imposes daily sending limits on Gmail accounts. When using this gateway, a standard Gmail account is typically limited to approximately 100 recipients per day. The limit applies to recipients, not messages. For example, sending one email to ten recipients counts as ten recipients against the daily quota.
+
+
 The design is deliberately simple:
 
 | Component | Role |
