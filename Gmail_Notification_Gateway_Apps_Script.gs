@@ -3,7 +3,7 @@ const SECRET_TOKEN = 'REPLACE_WITH_A_LONG_RANDOM_TOKEN';
 // Keep real email addresses here, not in Hubitat.
 // Hubitat sends a recipient group name. Apps Script resolves that group to actual recipients.
 const RECIPIENT_GROUPS = {
-  gordon: [
+  user: [
     'your.email@gmail.com'
   ],
   family: [
@@ -16,6 +16,7 @@ const RECIPIENT_GROUPS = {
   ]
 };
 
+const DEFAULT_RECIPIENT_GROUP = 'user'; // Must match a key in RECIPIENT_GROUPS.
 const DEFAULT_FROM_NAME = 'Hubitat';
 const MAX_BODY_LENGTH = 5000;
 const MAX_SUBJECT_LENGTH = 120;
@@ -35,7 +36,7 @@ function doPost(e) {
     const payload = parseJson_(e);
     validateToken_(payload.token);
 
-    const groupName = String(payload.group || 'gordon').trim().toLowerCase();
+    const groupName = String(payload.group || DEFAULT_RECIPIENT_GROUP).trim().toLowerCase();
     const recipients = RECIPIENT_GROUPS[groupName];
 
     if (!recipients || recipients.length === 0) {
