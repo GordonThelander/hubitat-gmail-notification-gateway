@@ -202,6 +202,14 @@ If you change the Apps Script code later, create a **new deployment version**. S
 | 4 | Click **Save**. |
 | 5 | Confirm there are no compile errors. |
 
+Instead of pasting the code, you can click **Import** in the Hubitat driver editor and enter:
+
+```text
+https://raw.githubusercontent.com/GordonThelander/hubitat-gmail-notification-gateway/main/Gmail_Notification_Gateway.groovy
+```
+
+The driver also carries that address in its `importUrl`, so once it is installed the **Import** button is pre-filled and later updates are a single click.
+
 The driver creates a normal Hubitat notification-capable device.
 
 | Driver item | Purpose |
@@ -392,6 +400,7 @@ https://developers.google.com/apps-script/guides/services/quotas
 
 | Change | Required action |
 |---|---|
+| Pull a newer driver from GitHub | Open the driver in **Drivers Code**, click **Import**, accept the pre-filled URL, then **Save**. |
 | Change Hubitat driver only | Save driver code in Hubitat. |
 | Change Hubitat preferences | Save preferences on the device. |
 | Change Apps Script code | Save script, then deploy a **new version**. |

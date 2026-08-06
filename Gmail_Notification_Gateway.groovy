@@ -6,7 +6,7 @@ metadata {
         name: "Gmail Notification Gateway",
         namespace: "Hubitat Integrations",
         author: "Gordon Thelander",
-        importUrl: ""
+        importUrl: "https://raw.githubusercontent.com/GordonThelander/hubitat-gmail-notification-gateway/main/Gmail_Notification_Gateway.groovy"
     ) {
         capability "Notification"
         capability "Actuator"
