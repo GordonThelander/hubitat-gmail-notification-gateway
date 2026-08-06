@@ -47,8 +47,15 @@ metadata {
         input name: "subjectPrefix",
               type: "text",
               title: "Email Subject",
+              description: "Used when the message does not carry its own Subject: prefix",
               defaultValue: "Hubitat Alert",
               required: true
+
+        input name: "allowSubjectPrefix",
+              type: "bool",
+              title: "Allow per-message subject override",
+              description: "Message text starting with 'Subject: this is the subject,This is the body' sets the subject for that message only",
+              defaultValue: true
 
         input name: "fromName",
               type: "text",
@@ -190,14 +197,16 @@ void checkWebhook() {
 }
 
 void deviceNotification(String text) {
-    sendEmailNotification(text)
+    Map message = splitSubjectAndBody(text)
+    sendEmailNotification(message.body as String, message.subject as String)
 }
 
-private void sendEmailNotification(String text) {
+private void sendEmailNotification(String text, String subjectOverride = null) {
     String url = normaliseUrl(webhookUrl)
     String cleanToken = token?.toString()?.trim()
     String groupName = recipientGroup?.toString()?.trim()?.toLowerCase()
     String cleanText = text?.toString()?.trim()
+    String subject = safeSubject(subjectOverride ?: subjectPrefix)
 
     if (!url) {
         markFailed("Missing Google Apps Script Web App URL")
@@ -227,7 +236,7 @@ private void sendEmailNotification(String text) {
     Map payload = [
         token   : cleanToken,
         group   : groupName,
-        subject : safeSubject(subjectPrefix),
+        subject : subject,
         text    : cleanText,
         source  : device.displayName,
         hub     : safeHubName(),
@@ -255,7 +264,7 @@ private void sendEmailNotification(String text) {
         log.debug "${device.displayName}: sending Gmail notification"
         log.debug "${device.displayName}: url=${redactUrl(url)}"
         log.debug "${device.displayName}: group=${groupName}"
-        log.debug "${device.displayName}: subject=${safeSubject(subjectPrefix)}"
+        log.debug "${device.displayName}: subject=${subject}${subjectOverride ? ' (per-message override)' : ''}"
         log.debug "${device.displayName}: textLength=${cleanText.length()}"
     }
 
@@ -449,6 +458,46 @@ private Integer safeTimeout() {
     } catch (Exception ignored) {
         return 30
     }
+}
+
+// Supports the convention used by other Hubitat email notification drivers:
+// "Subject: this is the subject,This is the body" sets the subject for that
+// message only. Anything that does not match is passed through untouched.
+private Map splitSubjectAndBody(String text) {
+    String raw = text?.toString()?.trim()
+    Map result = [subject: null, body: raw]
+
+    if (!raw) {
+        return result
+    }
+
+    // String compare, because a bool preference can arrive as the string "false",
+    // which is truthy in Groovy.
+    if (allowSubjectPrefix?.toString() == "false") {
+        return result
+    }
+
+    if (!raw.toLowerCase().startsWith("subject:")) {
+        return result
+    }
+
+    Integer comma = raw.indexOf(",")
+
+    if (comma < 0) {
+        return result
+    }
+
+    String subject = raw.substring("subject:".length(), comma).trim()
+
+    if (!subject) {
+        return result
+    }
+
+    String body = raw.substring(comma + 1).trim()
+
+    result.subject = subject
+    result.body = body ?: subject
+    return result
 }
 
 private String safeSubject(Object value) {

@@ -208,6 +208,7 @@ The driver creates a normal Hubitat notification-capable device.
 |---|---|
 | `capability "Notification"` | Allows Rule Machine and apps to use it as a normal notification device. |
 | `deviceNotification(text)` | Receives the notification message from Hubitat. |
+| `Subject:` prefix | Optional per-message subject override. See **Per-message subject override**. |
 | `checkWebhook` | Tests the Apps Script `/exec` endpoint. |
 | `sendTest` | Sends a test email. |
 | `clearStatus` | Clears visible status and error values. |
@@ -245,7 +246,8 @@ Open the virtual device and go to **Preferences**.
 | Google Apps Script Web App URL | Paste the Apps Script `/exec` URL. |
 | Shared Secret Token | Paste the same value used in `SECRET_TOKEN`. |
 | Recipient Group | Enter a group from `RECIPIENT_GROUPS`, for example `gordon`. |
-| Email Subject | Enter the subject line, for example `Hubitat Alert`. |
+| Email Subject | Enter the default subject line, for example `Hubitat Alert`. |
+| Allow per-message subject override | Leave on to let a message set its own subject with a `Subject:` prefix. |
 | Sender Display Name | Enter the display name, for example `Hubitat`. |
 | HTTP Timeout Seconds | Leave at `30` unless you have a reason to change it. |
 | Enable debug logging | Leave on during testing, then disable later. |
@@ -292,6 +294,45 @@ Example messages:
 | Water leak | `Water leak detected in the laundry.` |
 | Panic switch | `Emergency switch activated at home.` |
 | Hub health | `Hubitat free memory has dropped below threshold.` |
+
+To set the subject for one message only, prefix the text with `Subject:` and end the subject with a comma:
+
+```text
+Subject: Water leak,Water leak detected in the laundry.
+```
+
+See **Per-message subject override** for the full rules.
+
+## Per-message subject override
+
+The **Email Subject** preference sets the default subject for every message the device sends. A single message can override it by starting the text with `Subject:` and ending the subject with a comma, which is the same convention used by other Hubitat email notification drivers.
+
+```text
+Subject: Garage door,Garage door has been open for 10 minutes.
+```
+
+That sends an email with the subject `Garage door` and the body `Garage door has been open for 10 minutes.`
+
+| Message text | Subject used | Body sent |
+|---|---|---|
+| `Water leak detected in the laundry.` | Email Subject preference | `Water leak detected in the laundry.` |
+| `Subject: Water leak,Detected in the laundry.` | `Water leak` | `Detected in the laundry.` |
+| `Subject: Zones tripped,Zone 1, Zone 2` | `Zones tripped` | `Zone 1, Zone 2` |
+| `Subject: Panic switch activated,` | `Panic switch activated` | `Panic switch activated` |
+
+Rules the driver follows:
+
+| Rule | Behaviour |
+|---|---|
+| Prefix match | Case-insensitive. `Subject:`, `subject:` and `SUBJECT:` all work. |
+| Subject end | The **first** comma in the message ends the subject. Later commas stay in the body. |
+| No comma | The message is sent unchanged, using the Email Subject preference. |
+| Empty subject | For example `Subject:,text`. The message is sent unchanged. |
+| Empty body | For example `Subject: text,`. The subject is reused as the body, so Apps Script does not reject an empty message. |
+| Subject length | Trimmed to 120 characters, with any line breaks replaced by spaces. |
+| Preference off | Turn **Allow per-message subject override** off to disable parsing and always send the literal text. |
+
+No Apps Script change is required for this. `doPost` already uses the subject supplied in the POST payload.
 
 ## Message limits
 
@@ -344,6 +385,8 @@ https://developers.google.com/apps-script/guides/services/quotas
 | Apps Script returns unknown group | Recipient group mismatch | Ensure Hubitat group exactly matches `RECIPIENT_GROUPS`. |
 | Hubitat shows `302 Moved Temporarily` | Google Apps Script redirect | Normal if email sends. Driver treats this as success. |
 | No Apps Script execution appears | Wrong URL or Hubitat not reaching Google | Recopy the `/exec` URL and save preferences. |
+| Message text is missing its first few words | The text started with `Subject:` and was parsed as a subject override | Reword the message, or turn off **Allow per-message subject override**. |
+| `Subject:` prefix is ignored | No comma in the message, or the override preference is off | Add a comma after the subject, and check the preference. |
 
 ## Updating later
 
