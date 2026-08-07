@@ -8,6 +8,11 @@
  *  @author  Gordon Thelander
  *  @see     https://github.com/GordonThelander/hubitat-gmail-notification-gateway
  *
+ *  Copyright 2026 Gordon Thelander
+ *  Licensed under the Apache License, Version 2.0. You may obtain a copy at:
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *  Distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND.
+ *
  *  Change log
  *  1.1.0  Per-message subject override using a "Subject: subject,body" prefix.
  *         Driver version shown on the device page. importUrl set for one-click updates.
@@ -221,6 +226,29 @@ void checkWebhook() {
 void deviceNotification(String text) {
     Map message = splitSubjectAndBody(text)
     sendEmailNotification(message.body as String, message.subject as String)
+}
+
+// Maker API treats commas in a command's secondary value as parameter
+// separators, so a message containing commas arrives here split across several
+// arguments and would otherwise not match any method at all. That failure is
+// silent: Maker API still answers HTTP 200 to the caller. Rejoining is safe
+// because the split only ever removes the comma itself. Messages using the
+// "Subject: subject,body" prefix always contain at least one comma, so without
+// these the documented syntax cannot be used over Maker API.
+void deviceNotification(Object part1, Object part2) {
+    deviceNotification([part1, part2].join(","))
+}
+
+void deviceNotification(Object part1, Object part2, Object part3) {
+    deviceNotification([part1, part2, part3].join(","))
+}
+
+void deviceNotification(Object part1, Object part2, Object part3, Object part4) {
+    deviceNotification([part1, part2, part3, part4].join(","))
+}
+
+void deviceNotification(Object part1, Object part2, Object part3, Object part4, Object part5) {
+    deviceNotification([part1, part2, part3, part4, part5].join(","))
 }
 
 private void sendEmailNotification(String text, String subjectOverride = null) {
@@ -574,8 +602,10 @@ private String nowLocal() {
         tz = null
     }
 
+    // Fall back to UTC rather than a specific region, so a hub with no timezone
+    // set does not silently stamp times from someone else's part of the world.
     if (!tz) {
-        tz = TimeZone.getTimeZone("Australia/Perth")
+        tz = TimeZone.getTimeZone("UTC")
     }
 
     return new Date().format("yyyy-MM-dd HH:mm:ss", tz)

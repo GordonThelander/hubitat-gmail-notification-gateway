@@ -31,6 +31,7 @@ Hubitat does not send SMTP directly. Hubitat only performs an HTTPS POST to Goog
 | `Gmail_Notification_Gateway.groovy` | Hubitat driver. Install this under **Drivers Code**. |
 | `Gmail_Notification_Gateway_Apps_Script.gs` | Google Apps Script webhook code. Paste this into Apps Script. |
 | `packageManifest.json` | Hubitat Package Manager manifest. Not something you edit. |
+| `LICENSE` | Apache License 2.0. |
 | `README.md` | Setup and operating instructions. |
 
 Hubitat Package Manager installs the driver only. The Apps Script half is set up by hand, once, and HPM never touches it.
@@ -43,7 +44,7 @@ Hubitat Package Manager installs the driver only. The Apps Script half is set up
 | Google account | Gmail or Google Workspace account. |
 | Google Apps Script project | Used as the HTTPS webhook and email sender. |
 | Shared secret token | Same token must be configured in Apps Script and Hubitat. |
-| Recipient groups | Defined in Apps Script, for example `gordon`, `Family`, `Critical`. |
+| Recipient groups | Defined in Apps Script, for example `user`, `family`, `critical`. |
 
 ## Architecture
 
@@ -102,7 +103,7 @@ In `Gmail_Notification_Gateway_Apps_Script.gs`, update these values:
 | Field | What to configure |
 |---|---|
 | `SECRET_TOKEN` | A long random token. Use the same value in the Hubitat driver. |
-| `RECIPIENT_GROUPS.gordon` | Your personal email recipients. |
+| `RECIPIENT_GROUPS.user` | Your personal email recipients. |
 | `RECIPIENT_GROUPS.family` | Household or family recipients. |
 | `RECIPIENT_GROUPS.critical` | High-priority recipients. |
 | `testSend()` recipient | Your own email address for the manual Apps Script test. |
@@ -113,7 +114,7 @@ Example:
 const SECRET_TOKEN = 'REPLACE_WITH_A_LONG_RANDOM_TOKEN';
 
 const RECIPIENT_GROUPS = {
-  gordon: [
+  user: [
     'your.email@gmail.com'
   ],
   family: [
@@ -238,7 +239,7 @@ The driver creates a normal Hubitat notification-capable device.
 | 1 | Go to **Devices**. |
 | 2 | Click **Add Device**. |
 | 3 | Choose **Virtual**. |
-| 4 | Name the device, for example **Gmail - Gordon**. |
+| 4 | Name the device, for example **Gmail - Personal**. |
 | 5 | Set the device type to **Gmail Notification Gateway**. |
 | 6 | Save the device. |
 
@@ -248,7 +249,7 @@ Example setup:
 
 | Device name | Recipient group | Subject |
 |---|---|---|
-| Gmail - Gordon | `gordon` | `Hubitat Alert` |
+| Gmail - Personal | `user` | `Hubitat Alert` |
 | Gmail - Family | `family` | `Home Alert` |
 | Gmail - Critical | `critical` | `Critical Home Alert` |
 
@@ -260,7 +261,7 @@ Open the virtual device and go to **Preferences**.
 |---|---|
 | Google Apps Script Web App URL | Paste the Apps Script `/exec` URL. |
 | Shared Secret Token | Paste the same value used in `SECRET_TOKEN`. |
-| Recipient Group | Enter a group from `RECIPIENT_GROUPS`, for example `gordon`. |
+| Recipient Group | Enter a group from `RECIPIENT_GROUPS`, for example `user`. |
 | Email Subject | Enter the default subject line, for example `Hubitat Alert`. |
 | Allow per-message subject override | Leave on to let a message set its own subject with a `Subject:` prefix. |
 | Sender Display Name | Enter the display name, for example `Hubitat`. |
@@ -349,6 +350,22 @@ Rules the driver follows:
 
 No Apps Script change is required for this. `doPost` already uses the subject supplied in the POST payload.
 
+## Sending from Maker API
+
+The device works through Maker API like any other notification device:
+
+```text
+/apps/api/{appId}/devices/{deviceId}/deviceNotification/Water%20leak%20detected?access_token={token}
+```
+
+Be aware that **Maker API treats commas in the message as parameter separators**, not as text. It splits the value and passes the pieces as separate arguments. The driver rejoins them, so commas work, including the `Subject:` prefix:
+
+```text
+/devices/{deviceId}/deviceNotification/Subject:%20Water%20leak,Detected%20in%20the%20laundry?access_token={token}
+```
+
+Up to four commas are handled. Beyond that the call fails silently, because Maker API still answers HTTP 200 even when the command does not reach the driver. If a Maker API notification never arrives and nothing appears in the device logs, count the commas first.
+
 ## Message limits
 
 Google Apps Script email limits are based on **recipients**, not just messages.
@@ -422,14 +439,20 @@ The installed driver version is shown as **Driver Version** in Current States on
 
 | Version | Changes |
 |---|---|
-| 1.1.0 | Per-message subject override with a `Subject: subject,body` prefix, plus a preference to disable it. Driver version shown on the device page. `importUrl` set for one-click updates. Hubitat Package Manager support. No Apps Script change required. |
+| 1.1.0 | Per-message subject override with a `Subject: subject,body` prefix, plus a preference to disable it. Fixed messages containing commas failing silently when sent through Maker API. Driver version shown on the device page. `importUrl` set for one-click updates. Hubitat Package Manager support. Apps Script now stamps email timestamps in your own timezone instead of a hardcoded one. |
 | 1.0.0 | Initial release. |
+
+Updating to 1.1.0 needs no Apps Script change for the driver features to work. Repasting the Apps Script and deploying a new version is optional, and only affects the timestamp shown at the bottom of each email.
+
+## License
+
+Apache License 2.0. See `LICENSE`.
 
 ## Recommended final setup
 
 | Item | Recommended value |
 |---|---|
-| One device for personal alerts | `Gmail - Gordon`, group `gordon`. |
+| One device for personal alerts | `Gmail - Personal`, group `user`. |
 | One device for household alerts | `Gmail - Family`, group `family`. |
 | One device for high-priority alerts | `Gmail - Critical`, group `critical`. |
 | Debug logging | On during setup, off once stable. |

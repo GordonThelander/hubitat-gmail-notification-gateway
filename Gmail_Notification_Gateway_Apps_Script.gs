@@ -1,3 +1,19 @@
+/**
+ *  Gmail Notification Gateway, Google Apps Script webhook
+ *
+ *  Receives HTTP POSTs from the Hubitat driver, validates the shared token,
+ *  resolves a recipient group name to real addresses and sends the email.
+ *
+ *  @version 1.1.0
+ *  @author  Gordon Thelander
+ *  @see     https://github.com/GordonThelander/hubitat-gmail-notification-gateway
+ *
+ *  Copyright 2026 Gordon Thelander
+ *  Licensed under the Apache License, Version 2.0. You may obtain a copy at:
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *  Distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND.
+ */
+
 const SECRET_TOKEN = 'REPLACE_WITH_A_LONG_RANDOM_TOKEN';
 
 // Keep real email addresses here, not in Hubitat.
@@ -58,7 +74,7 @@ function doPost(e) {
 
     const source = payload.source ? `\n\nSource: ${payload.source}` : '';
     const hub = payload.hub ? `\nHub: ${payload.hub}` : '';
-    const timestamp = Utilities.formatDate(new Date(), 'Australia/Perth', 'yyyy-MM-dd HH:mm:ss z');
+    const timestamp = Utilities.formatDate(new Date(), scriptTimeZone_(), 'yyyy-MM-dd HH:mm:ss z');
 
     const body =
       message +
@@ -96,6 +112,17 @@ function testSend() {
     body: 'Manual Apps Script test successful.',
     name: 'Hubitat'
   });
+}
+
+// Uses the timezone of this Apps Script project, which Google sets from your
+// own account, so email timestamps read correctly wherever you are. Change it
+// under Project Settings if it is wrong.
+function scriptTimeZone_() {
+  try {
+    return Session.getScriptTimeZone() || 'UTC';
+  } catch (err) {
+    return 'UTC';
+  }
 }
 
 function parseJson_(e) {
