@@ -1,0 +1,20 @@
+{
+  "packageName": "Gmail Notification Gateway",
+  "author": "Gordon Thelander",
+  "version": "1.1.0",
+  "minimumHEVersion": "1.0.0",
+  "dateReleased": "2026-08-07",
+  "documentationLink": "https://github.com/GordonThelander/hubitat-gmail-notification-gateway/blob/main/README.md",
+  "communityLink": "https://community.hubitat.com/t/gmail-notification-gateway/164723",
+  "releaseNotes": "Sends Hubitat notifications as Gmail messages through a Google Apps Script webhook, with no paid messaging service and no Google Cloud project. Recipient addresses are held in Apps Script and the hub only sends a group name, so real addresses never live on the hub.\n\n1.1.0: Per-message subject override. Prefix a message with \"Subject: this is the subject,This is the body\" to set the subject for that message only, matching the convention used by other Hubitat email notification drivers. A preference turns the behaviour off. The driver version now appears on the device page, and importUrl is set so future updates can be imported in one click. No Apps Script change or redeployment is required for this release.\n\n1.0.0: Initial release.",
+  "drivers": [
+    {
+      "id": "efd205b7-d70a-4666-a195-21da7f1c7abd",
+      "name": "Gmail Notification Gateway",
+      "namespace": "Hubitat Integrations",
+      "location": "https://raw.githubusercontent.com/GordonThelander/hubitat-gmail-notification-gateway/main/Gmail_Notification_Gateway.groovy",
+      "required": true,
+      "version": "1.1.0"
+    }
+  ]
+}

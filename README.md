@@ -30,7 +30,10 @@ Hubitat does not send SMTP directly. Hubitat only performs an HTTPS POST to Goog
 |---|---|
 | `Gmail_Notification_Gateway.groovy` | Hubitat driver. Install this under **Drivers Code**. |
 | `Gmail_Notification_Gateway_Apps_Script.gs` | Google Apps Script webhook code. Paste this into Apps Script. |
+| `packageManifest.json` | Hubitat Package Manager manifest. Not something you edit. |
 | `README.md` | Setup and operating instructions. |
+
+Hubitat Package Manager installs the driver only. The Apps Script half is set up by hand, once, and HPM never touches it.
 
 ## Prerequisites
 
@@ -193,6 +196,10 @@ If you see an authorisation error, check the deployment settings:
 If you change the Apps Script code later, create a **new deployment version**. Saving the script alone may not update the deployed `/exec` endpoint.
 
 ## 6. Install the Hubitat driver
+
+The easiest route is **Hubitat Package Manager**. Choose **Install**, then **Search by Keywords**, and search for `Gmail Notification Gateway`. HPM installs the driver and tells you when an update is available.
+
+To install by hand instead:
 
 | Step | Action |
 |---:|---|
@@ -400,6 +407,7 @@ https://developers.google.com/apps-script/guides/services/quotas
 
 | Change | Required action |
 |---|---|
+| Update the driver via HPM | Run **Hubitat Package Manager** → **Update**, and select this package. |
 | Pull a newer driver from GitHub | Open the driver in **Drivers Code**, click **Import**, accept the pre-filled URL, then **Save**. |
 | Change Hubitat driver only | Save driver code in Hubitat. |
 | Change Hubitat preferences | Save preferences on the device. |
@@ -407,6 +415,15 @@ https://developers.google.com/apps-script/guides/services/quotas
 | Change recipient groups | Save Apps Script and deploy a new version. |
 | Change token | Update Apps Script, deploy new version, update Hubitat token, save preferences. |
 | Create another recipient group | Add group in Apps Script, deploy, then create/configure another Hubitat virtual device. |
+
+## Change log
+
+The installed driver version is shown as **Driver Version** in Current States on the device page. If that field is missing, you are on the original unversioned release. Click **Refresh** after an update to resync it, because Hubitat does not run the driver's update hook when driver code is saved.
+
+| Version | Changes |
+|---|---|
+| 1.1.0 | Per-message subject override with a `Subject: subject,body` prefix, plus a preference to disable it. Driver version shown on the device page. `importUrl` set for one-click updates. Hubitat Package Manager support. No Apps Script change required. |
+| 1.0.0 | Initial release. |
 
 ## Recommended final setup
 

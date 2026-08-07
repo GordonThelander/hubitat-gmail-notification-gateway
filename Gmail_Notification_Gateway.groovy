@@ -1,5 +1,26 @@
+/**
+ *  Gmail Notification Gateway
+ *
+ *  Sends Hubitat notifications as Gmail messages through a Google Apps Script webhook.
+ *  Recipient addresses are held in Apps Script, not on the hub.
+ *
+ *  @version 1.1.0
+ *  @author  Gordon Thelander
+ *  @see     https://github.com/GordonThelander/hubitat-gmail-notification-gateway
+ *
+ *  Change log
+ *  1.1.0  Per-message subject override using a "Subject: subject,body" prefix.
+ *         Driver version shown on the device page. importUrl set for one-click updates.
+ *  1.0.0  Initial release.
+ */
+
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
+
+// Non-static on purpose. The Hubitat sandbox rejects top-level static methods.
+String driverVersion() {
+    return "1.1.0"
+}
 
 metadata {
     definition(
@@ -18,6 +39,7 @@ metadata {
         attribute "lastResponse", "string"
         attribute "lastHttpStatus", "number"
         attribute "lastWebhookCheck", "string"
+        attribute "driverVersion", "string"
 
         command "sendTest"
         command "checkWebhook"
@@ -415,12 +437,25 @@ private void markFailed(String message) {
 }
 
 private void initialiseState() {
+    publishDriverVersion()
+
     if (!device.currentValue("lastStatus")) {
         sendEvent(name: "lastStatus", value: "ready")
     }
 
     if (!device.currentValue("lastError")) {
         sendEvent(name: "lastError", value: "")
+    }
+}
+
+// Saving driver code does not call updated(), so this also runs from refresh()
+// to give a way to resync the displayed version after an update.
+private void publishDriverVersion() {
+    String v = driverVersion()
+
+    if (device.currentValue("driverVersion") != v) {
+        sendEvent(name: "driverVersion", value: v)
+        log.info "${device.displayName}: driver version ${v}"
     }
 }
 
