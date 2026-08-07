@@ -140,6 +140,18 @@ Before Hubitat can send mail through Apps Script, Google must authorise the scri
 | 4 | Approve the requested permissions. |
 | 5 | Confirm that the manual test email arrives. |
 
+What to expect on the authorisation screens:
+
+| Screen | What to do |
+|---|---|
+| Choose an account | Pick the Google account that should send the email. |
+| **Google hasn't verified this app**, if shown | Click **Advanced**, then **Go to (project name) (unsafe)**. |
+| Permission to send email as you | Click **Allow**. |
+
+You may or may not see the unverified warning. Whether Google shows it depends on your account type and settings, and some Workspace accounts skip it entirely.
+
+If it does appear, it looks alarming but is not a sign that anything is wrong. Verification is a review process for apps distributed to other people's accounts. This is a script you created, in your own account, running as you, so there is nobody to verify it to. The permission being granted is the one the gateway needs, which is to send mail as you.
+
 If `testSend()` does not send an email, Hubitat will not work yet. Fix the Apps Script authorisation first.
 
 ## 4. Deploy the script as a web app
@@ -198,7 +210,9 @@ If you change the Apps Script code later, create a **new deployment version**. S
 
 ## 6. Install the Hubitat driver
 
-The easiest route is **Hubitat Package Manager**. Choose **Install**, then **Search by Keywords**, and search for `Gmail Notification Gateway`. HPM installs the driver and tells you when an update is available.
+Complete steps 1 to 5 before this. The driver cannot send anything until the Apps Script side is deployed and authorised.
+
+The easiest route is **Hubitat Package Manager**. Choose **Install**, then **Search by Keywords**, and search for `Gmail Notification Gateway`. HPM installs the driver and tells you when an update is available. It does not create the device, so continue to step 7 afterwards.
 
 To install by hand instead:
 
