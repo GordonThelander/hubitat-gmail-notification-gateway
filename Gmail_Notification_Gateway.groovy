@@ -4,7 +4,7 @@
  *  Sends Hubitat notifications as Gmail messages through a Google Apps Script webhook.
  *  Recipient addresses are held in Apps Script, not on the hub.
  *
- *  @version 1.1.0
+ *  @version 1.2.0
  *  @author  Gordon Thelander
  *  @see     https://github.com/GordonThelander/hubitat-gmail-notification-gateway
  *
@@ -14,6 +14,12 @@
  *  Distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND.
  *
  *  Change log
+ *  1.2.0  Per-message recipient group using a "Group: family,body" prefix, so one
+ *         device can reach every audience. Unknown groups are rejected before
+ *         sending, checked against a Known Recipient Groups preference, because
+ *         Apps Script's rejection is invisible behind its HTTP 302 redirect.
+ *         lastError now reads "none" when clear, since Hubitat does not apply an
+ *         empty string state change and a resolved error stayed on screen forever.
  *  1.1.0  Per-message subject override using a "Subject: subject,body" prefix.
  *         Driver version shown on the device page. importUrl set for one-click updates.
  *  1.0.0  Initial release.
@@ -24,7 +30,7 @@ import groovy.json.JsonSlurper
 
 // Non-static on purpose. The Hubitat sandbox rejects top-level static methods.
 String driverVersion() {
-    return "1.1.0"
+    return "1.2.0"
 }
 
 metadata {
@@ -66,10 +72,23 @@ metadata {
 
         input name: "recipientGroup",
               type: "text",
-              title: "Recipient Group",
-              description: "Example: user, family, critical",
+              title: "Default Recipient Group",
+              description: "Used when the message does not carry its own Group: prefix",
               defaultValue: "user",
               required: true
+
+        input name: "allowGroupPrefix",
+              type: "bool",
+              title: "Allow per-message recipient group",
+              description: "Message text starting with 'Group: family,...' sends that one message to a different group",
+              defaultValue: true
+
+        input name: "knownGroups",
+              type: "text",
+              title: "Known Recipient Groups",
+              description: "Comma separated list of the groups defined in Apps Script. A Group: prefix naming anything else is rejected before sending, so a typo cannot silently go nowhere. Leave blank to skip the check.",
+              defaultValue: "user,family,critical",
+              required: false
 
         input name: "subjectPrefix",
               type: "text",
@@ -129,7 +148,7 @@ void refresh() {
 void clearStatus() {
     sendEvent(name: "lastStatus", value: "ready")
     sendEvent(name: "lastSentAt", value: "")
-    sendEvent(name: "lastError", value: "")
+    sendEvent(name: "lastError", value: "none")
     sendEvent(name: "lastResponse", value: "")
     sendEvent(name: "lastHttpStatus", value: null)
     sendEvent(name: "lastWebhookCheck", value: "")
@@ -164,7 +183,7 @@ void checkWebhook() {
 
     sendEvent(name: "lastWebhookCheck", value: "checking")
     sendEvent(name: "lastStatus", value: "checking webhook")
-    sendEvent(name: "lastError", value: "")
+    sendEvent(name: "lastError", value: "none")
     sendEvent(name: "lastResponse", value: "")
     sendEvent(name: "lastHttpStatus", value: null)
 
@@ -199,7 +218,7 @@ void checkWebhook() {
             if (parsed?.ok == true) {
                 sendEvent(name: "lastWebhookCheck", value: "ok HTTP ${status}")
                 sendEvent(name: "lastStatus", value: "webhook reachable")
-                sendEvent(name: "lastError", value: "")
+                sendEvent(name: "lastError", value: "none")
                 sendEvent(name: "lastResponse", value: JsonOutput.toJson(parsed).take(255))
                 return
             }
@@ -224,8 +243,10 @@ void checkWebhook() {
 }
 
 void deviceNotification(String text) {
-    Map message = splitSubjectAndBody(text)
-    sendEmailNotification(message.body as String, message.subject as String)
+    Map routed = splitGroupAndRest(text)
+    Map message = splitSubjectAndBody(routed.rest as String)
+
+    sendEmailNotification(message.body as String, message.subject as String, routed.group as String)
 }
 
 // Maker API treats commas in a command's secondary value as parameter
@@ -251,12 +272,20 @@ void deviceNotification(Object part1, Object part2, Object part3, Object part4, 
     deviceNotification([part1, part2, part3, part4, part5].join(","))
 }
 
-private void sendEmailNotification(String text, String subjectOverride = null) {
+private void sendEmailNotification(String text, String subjectOverride = null, String groupOverride = null) {
     String url = normaliseUrl(webhookUrl)
     String cleanToken = token?.toString()?.trim()
-    String groupName = recipientGroup?.toString()?.trim()?.toLowerCase()
+    String groupName = (groupOverride ?: recipientGroup)?.toString()?.trim()?.toLowerCase()
     String cleanText = text?.toString()?.trim()
     String subject = safeSubject(subjectOverride ?: subjectPrefix)
+
+    // Checked here rather than left to Apps Script, because Apps Script's
+    // ok:false reply is invisible behind the HTTP 302 (see change log 1.2.0),
+    // so an unknown group would otherwise report "sent" and go nowhere.
+    if (groupOverride && !isKnownGroup(groupName)) {
+        markFailed("Unknown recipient group '${groupName}'. Known groups: ${knownGroupList().join(', ')}")
+        return
+    }
 
     if (!url) {
         markFailed("Missing Google Apps Script Web App URL")
@@ -306,14 +335,14 @@ private void sendEmailNotification(String text, String subjectOverride = null) {
     ]
 
     sendEvent(name: "lastStatus", value: "sending")
-    sendEvent(name: "lastError", value: "")
+    sendEvent(name: "lastError", value: "none")
     sendEvent(name: "lastResponse", value: "")
     sendEvent(name: "lastHttpStatus", value: null)
 
     if (logEnable) {
         log.debug "${device.displayName}: sending Gmail notification"
         log.debug "${device.displayName}: url=${redactUrl(url)}"
-        log.debug "${device.displayName}: group=${groupName}"
+        log.debug "${device.displayName}: group=${groupName}${groupOverride ? ' (per-message override)' : ''}"
         log.debug "${device.displayName}: subject=${subject}${subjectOverride ? ' (per-message override)' : ''}"
         log.debug "${device.displayName}: textLength=${cleanText.length()}"
     }
@@ -413,7 +442,7 @@ private void markSent(Integer status, String body) {
 
     sendEvent(name: "lastStatus", value: "sent")
     sendEvent(name: "lastSentAt", value: ts)
-    sendEvent(name: "lastError", value: "")
+    sendEvent(name: "lastError", value: "none")
     sendEvent(name: "lastResponse", value: body?.take(255) ?: "HTTP ${status}, sent")
     sendEvent(name: "lastHttpStatus", value: status)
 
@@ -425,7 +454,7 @@ private void markSentViaRedirect() {
 
     sendEvent(name: "lastStatus", value: "sent")
     sendEvent(name: "lastSentAt", value: ts)
-    sendEvent(name: "lastError", value: "")
+    sendEvent(name: "lastError", value: "none")
     sendEvent(name: "lastResponse", value: "Google Apps Script returned HTTP 302 redirect after POST. Email send treated as successful.")
     sendEvent(name: "lastHttpStatus", value: 302)
 
@@ -438,7 +467,7 @@ private void markSentTransportOnly(Integer status, String reason = "") {
 
     sendEvent(name: "lastStatus", value: "sent")
     sendEvent(name: "lastSentAt", value: ts)
-    sendEvent(name: "lastError", value: "")
+    sendEvent(name: "lastError", value: "none")
     sendEvent(name: "lastResponse", value: response.take(255))
     sendEvent(name: "lastHttpStatus", value: status)
 
@@ -448,7 +477,7 @@ private void markSentTransportOnly(Integer status, String reason = "") {
 private void markWebhookReachableViaRedirect() {
     sendEvent(name: "lastWebhookCheck", value: "ok HTTP 302 redirect")
     sendEvent(name: "lastStatus", value: "webhook reachable")
-    sendEvent(name: "lastError", value: "")
+    sendEvent(name: "lastError", value: "none")
     sendEvent(name: "lastResponse", value: "Google Apps Script returned HTTP 302 redirect during webhook check.")
     sendEvent(name: "lastHttpStatus", value: 302)
 
@@ -472,7 +501,7 @@ private void initialiseState() {
     }
 
     if (!device.currentValue("lastError")) {
-        sendEvent(name: "lastError", value: "")
+        sendEvent(name: "lastError", value: "none")
     }
 }
 
@@ -521,6 +550,72 @@ private Integer safeTimeout() {
     } catch (Exception ignored) {
         return 30
     }
+}
+
+// "Group: family,rest of the message" sends that one message to a different
+// recipient group. Runs before the Subject: parse, so both can be combined as
+// "Group: family,Subject: the subject,the body". Anything that does not match
+// is passed through untouched.
+private Map splitGroupAndRest(String text) {
+    String raw = text?.toString()?.trim()
+    Map result = [group: null, rest: raw]
+
+    if (!raw) {
+        return result
+    }
+
+    if (allowGroupPrefix?.toString() == "false") {
+        return result
+    }
+
+    if (!raw.toLowerCase().startsWith("group:")) {
+        return result
+    }
+
+    Integer comma = raw.indexOf(",")
+
+    if (comma < 0) {
+        return result
+    }
+
+    String group = raw.substring("group:".length(), comma).trim()
+
+    if (!group) {
+        return result
+    }
+
+    String rest = raw.substring(comma + 1).trim()
+
+    // Nothing left to send. Pass through untouched so the literal text is
+    // visible in the email rather than silently sending an empty message.
+    if (!rest) {
+        return result
+    }
+
+    result.group = group
+    result.rest = rest
+    return result
+}
+
+private List knownGroupList() {
+    String raw = knownGroups?.toString()?.trim()
+
+    if (!raw) {
+        return []
+    }
+
+    return raw.toLowerCase().split(",").collect { it.trim() }.findAll { it }
+}
+
+private Boolean isKnownGroup(String group) {
+    List known = knownGroupList()
+
+    // Blank preference means the user opted out of the check.
+    if (!known) {
+        return true
+    }
+
+    return known.contains(group?.toString()?.trim()?.toLowerCase())
 }
 
 // Supports the convention used by other Hubitat email notification drivers:

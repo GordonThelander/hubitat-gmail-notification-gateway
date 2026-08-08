@@ -1,12 +1,12 @@
 {
   "packageName": "Gmail Notification Gateway",
   "author": "Gordon Thelander",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "minimumHEVersion": "1.0.0",
-  "dateReleased": "2026-08-07",
+  "dateReleased": "2026-08-08",
   "documentationLink": "https://github.com/GordonThelander/hubitat-gmail-notification-gateway/blob/main/README.md",
   "communityLink": "https://community.hubitat.com/t/gmail-notification-gateway/164723",
-  "releaseNotes": "BEFORE YOU START: this package installs the Hubitat driver only. It cannot send anything until you complete a one-time Google Apps Script setup in your own Google account, which takes about ten minutes. Follow the README linked above first. Installing the driver on its own will appear to do nothing.\n\nHubitat Package Manager also does not create the device for you. After installing, go to Devices, Add Device, Virtual, and choose Gmail Notification Gateway as the device type.\n\nSends Hubitat notifications as Gmail messages through a Google Apps Script webhook, with no paid messaging service and no Google Cloud project. Recipient addresses are held in Apps Script and the hub only sends a group name, so real addresses never live on the hub.\n\n1.1.0: Per-message subject override. Prefix a message with \"Subject: this is the subject,This is the body\" to set the subject for that message only, matching the convention used by other Hubitat email notification drivers. A preference turns the behaviour off. Also fixes messages containing commas failing silently when sent through Maker API, and shows the driver version on the device page. No Apps Script change is required for any of this. Repasting the Apps Script is optional, and only changes the timestamp at the foot of each email from a hardcoded timezone to your own.\n\n1.0.0: Initial release.",
+  "releaseNotes": "BEFORE YOU START: this package installs the Hubitat driver only. It cannot send anything until you complete a one-time Google Apps Script setup in your own Google account, which takes about ten minutes. Follow the README linked above first. Installing the driver on its own will appear to do nothing.\n\nHubitat Package Manager also does not create the device for you. After installing, go to Devices, Add Device, Virtual, and choose Gmail Notification Gateway as the device type.\n\nSends Hubitat notifications as Gmail messages through a Google Apps Script webhook, with no paid messaging service and no Google Cloud project. Recipient addresses are held in Apps Script and the hub only sends a group name, so real addresses never live on the hub.\n\n1.2.0: Per-message recipient group. Prefix a message with \"Group: family,...\" to send that one message to a different audience, so a single device can reach every group instead of needing one device per group. Combines with the subject prefix as \"Group: family,Subject: the subject,the body\". Unknown group names are rejected before sending, checked against a new Known Recipient Groups preference, because Apps Script's own rejection is invisible behind Google's HTTP 302 redirect and would otherwise be reported as success. Also fixes a resolved error staying on the device page indefinitely. No Apps Script code change required, though the groups themselves must exist in your RECIPIENT_GROUPS.\n\n1.1.0: Per-message subject override. Prefix a message with \"Subject: this is the subject,This is the body\" to set the subject for that message only, matching the convention used by other Hubitat email notification drivers. A preference turns the behaviour off. Also fixes messages containing commas failing silently when sent through Maker API, and shows the driver version on the device page. No Apps Script change is required for any of this. Repasting the Apps Script is optional, and only changes the timestamp at the foot of each email from a hardcoded timezone to your own.\n\n1.0.0: Initial release.",
   "drivers": [
     {
       "id": "efd205b7-d70a-4666-a195-21da7f1c7abd",
@@ -14,7 +14,7 @@
       "namespace": "Hubitat Integrations",
       "location": "https://raw.githubusercontent.com/GordonThelander/hubitat-gmail-notification-gateway/main/Gmail_Notification_Gateway.groovy",
       "required": true,
-      "version": "1.1.0"
+      "version": "1.2.0"
     }
   ]
 }

@@ -257,15 +257,17 @@ The driver creates a normal Hubitat notification-capable device.
 | 5 | Set the device type to **Gmail Notification Gateway**. |
 | 6 | Save the device. |
 
-You can create multiple virtual devices if you want different recipient groups or subject lines.
+**One device is usually enough.** A message can pick its own recipient group with a `Group:` prefix, so a single device can reach every audience. See **Per-message recipient group**.
 
-Example setup:
+Create more than one only if you want a hard separation, for example a device wired into rules that must never be able to email the whole family:
 
-| Device name | Recipient group | Subject |
+| Device name | Default group | Subject |
 |---|---|---|
 | Gmail - Personal | `user` | `Hubitat Alert` |
 | Gmail - Family | `family` | `Home Alert` |
 | Gmail - Critical | `critical` | `Critical Home Alert` |
+
+With separate devices, the audience is fixed by which device a rule points at, and no message text can change it.
 
 ## 8. Configure the Hubitat device preferences
 
@@ -275,7 +277,9 @@ Open the virtual device and go to **Preferences**.
 |---|---|
 | Google Apps Script Web App URL | Paste the Apps Script `/exec` URL. |
 | Shared Secret Token | Paste the same value used in `SECRET_TOKEN`. |
-| Recipient Group | Enter a group from `RECIPIENT_GROUPS`, for example `user`. |
+| Default Recipient Group | A group from `RECIPIENT_GROUPS`, for example `user`. Used when a message carries no `Group:` prefix. |
+| Allow per-message recipient group | Leave on to let a message choose its group with a `Group:` prefix. |
+| Known Recipient Groups | The groups your Apps Script defines, comma separated. A `Group:` prefix naming anything else is rejected before sending. |
 | Email Subject | Enter the default subject line, for example `Hubitat Alert`. |
 | Allow per-message subject override | Leave on to let a message set its own subject with a `Subject:` prefix. |
 | Sender Display Name | Enter the display name, for example `Hubitat`. |
@@ -331,7 +335,50 @@ To set the subject for one message only, prefix the text with `Subject:` and end
 Subject: Water leak,Water leak detected in the laundry.
 ```
 
-See **Per-message subject override** for the full rules.
+To send one alert to a different audience, prefix it with the group. Both prefixes can be combined:
+
+```text
+Group: family,Subject: URGENT water leak,Leak detected in the laundry
+```
+
+See **Per-message recipient group** and **Per-message subject override** for the full rules.
+
+## Per-message recipient group
+
+The **Default Recipient Group** preference sets where a device's messages go. A single message can override it by starting the text with `Group:` and ending the group name with a comma, which lets one device reach every audience.
+
+```text
+Group: family,Water leak detected in the laundry.
+```
+
+`Group:` and `Subject:` can be combined, in that order:
+
+```text
+Group: critical,Subject: URGENT water leak,Leak detected in the laundry.
+```
+
+| Message text | Goes to | Subject |
+|---|---|---|
+| `Water leak in the laundry.` | Default Recipient Group | Email Subject preference |
+| `Subject: Water leak,In the laundry.` | Default Recipient Group | `Water leak` |
+| `Group: family,Water leak in the laundry.` | `family` | Email Subject preference |
+| `Group: critical,Subject: URGENT,Leak in the laundry.` | `critical` | `URGENT` |
+
+Rules the driver follows:
+
+| Rule | Behaviour |
+|---|---|
+| Prefix match | Case-insensitive. `Group:`, `group:` and `GROUP:` all work. |
+| Order | `Group:` must come first when both prefixes are used. |
+| Group end | The first comma ends the group name. |
+| Unknown group | Rejected before sending. `lastStatus` shows `failed` and `lastError` names the group and lists the known ones. |
+| No comma | The message is sent unchanged to the default group. |
+| Empty group or empty remainder | For example `Group:,text` or `Group: family,`. The message is sent unchanged. |
+| Preference off | Turn **Allow per-message recipient group** off to disable parsing entirely. |
+
+**Why unknown groups are checked on the hub.** Apps Script does reject an unknown group, but its reply is invisible to the driver behind Google's HTTP 302 redirect, so the send would report `sent` and quietly reach nobody. Checking the name against **Known Recipient Groups** before sending turns a silent miss into a visible error. Keep that preference in step with the groups in your Apps Script, or clear it to skip the check.
+
+**The groups themselves live in Apps Script.** Adding an audience means editing `RECIPIENT_GROUPS`, deploying a new version, and adding the name to Known Recipient Groups. The hub never sends an email address, only a group name.
 
 ## Per-message subject override
 
@@ -453,6 +500,7 @@ The installed driver version is shown as **Driver Version** in Current States on
 
 | Version | Changes |
 |---|---|
+| 1.2.0 | Per-message recipient group with a `Group: group,body` prefix, so one device can reach every audience. Unknown group names are rejected before sending, checked against a new Known Recipient Groups preference. `lastError` now reads `none` when clear, fixing a resolved error staying on the device page indefinitely. No Apps Script change. |
 | 1.1.0 | Per-message subject override with a `Subject: subject,body` prefix, plus a preference to disable it. Fixed messages containing commas failing silently when sent through Maker API. Driver version shown on the device page. `importUrl` set for one-click updates. Hubitat Package Manager support. Apps Script now stamps email timestamps in your own timezone instead of a hardcoded one. |
 | 1.0.0 | Initial release. |
 
