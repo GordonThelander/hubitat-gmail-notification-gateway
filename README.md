@@ -128,6 +128,30 @@ const RECIPIENT_GROUPS = {
 };
 ```
 
+Each address must be its own quoted array element. Putting two addresses in one string, `'me@example.com,them@example.com'`, still delivers, because the script joins the array before sending, but the quota check then counts one recipient where two are consumed.
+
+### Designing your groups
+
+**A group is an audience, not a severity.** The easiest mistake is treating `critical` as "more urgent" rather than "more people", which typically leaves it containing only you. A critical alert then reaches *fewer* people than a family one, which is backwards.
+
+Urgency belongs in the subject, where it costs nothing:
+
+```text
+Group: family,Subject: URGENT water leak,Leak detected in the laundry
+```
+
+A sensible starting shape:
+
+| Group | Who | Use for |
+|---|---|---|
+| `user` | you | routine and chatty alerts |
+| `family` | you and other household members | anything the household should know |
+| `critical` | you and household, possibly a neighbour | urgent, if the audience genuinely differs |
+
+If `critical` ends up identical to `family`, delete it. Fewer groups means fewer names to mistype, and the subject already carries the urgency.
+
+Whoever appears in several groups simply gets a copy from each, and every recipient counts against the daily quota separately.
+
 ## 3. Authorise MailApp
 
 Before Hubitat can send mail through Apps Script, Google must authorise the script to send email.
@@ -165,6 +189,8 @@ If `testSend()` does not send an email, Hubitat will not work yet. Fix the Apps 
 | 5 | Set **Who has access** to **Anyone**. |
 | 6 | Click **Deploy**. |
 | 7 | Copy the generated **Web app URL**. |
+
+Use **New deployment** for this first deploy only. Every later change must go through **Manage deployments**, or you will change your URL. See **Changing the Apps Script later**.
 
 The URL must look like this:
 
@@ -343,6 +369,32 @@ Group: family,Subject: URGENT water leak,Leak detected in the laundry
 
 See **Per-message recipient group** and **Per-message subject override** for the full rules.
 
+## Changing the Apps Script later
+
+Any change to the script, adding a recipient, editing a group, rotating the token, needs a **new deployed version**. Saving the script alone does nothing to the live endpoint. Running a function from the editor also proves nothing, since the editor runs your saved code while `/exec` keeps serving the deployed version.
+
+Use this path, which keeps the same URL:
+
+| Step | Action |
+|---:|---|
+| 1 | **Deploy** → **Manage deployments**. |
+| 2 | Select the existing deployment. |
+| 3 | Click the **pencil / edit** icon. |
+| 4 | Set Version to **New version**. |
+| 5 | Click **Deploy**. |
+
+**Do not use New deployment for updates.** It creates a second deployment with a **different URL** and leaves the one Hubitat is using pointing at nothing.
+
+Symptoms of having done that:
+
+| What you see | Meaning |
+|---|---|
+| `lastStatus` `failed`, `lastError` mentioning `Lexing failed ... while reading '<'` | The URL returned an HTML error page instead of JSON, usually a dead deployment. |
+| Opening the `/exec` URL in a browser gives a Google 404 | The deployment that URL belonged to no longer exists. |
+| `Check Webhook` was fine earlier and fails now, with no driver change | The endpoint moved. |
+
+If it happens, open **Manage deployments**, copy the current deployment's Web app URL, paste it into the device's **Google Apps Script Web App URL** preference, and click **Save Preferences**. Then run **Check Webhook**, which sends no email.
+
 ## Per-message recipient group
 
 The **Default Recipient Group** preference sets where a device's messages go. A single message can override it by starting the text with `Group:` and ending the group name with a comma, which lets one device reach every audience.
@@ -489,9 +541,9 @@ https://developers.google.com/apps-script/guides/services/quotas
 | Pull a newer driver from GitHub | Open the driver in **Drivers Code**, click **Import**, accept the pre-filled URL, then **Save**. |
 | Change Hubitat driver only | Save driver code in Hubitat. |
 | Change Hubitat preferences | Save preferences on the device. |
-| Change Apps Script code | Save script, then deploy a **new version**. |
-| Change recipient groups | Save Apps Script and deploy a new version. |
-| Change token | Update Apps Script, deploy new version, update Hubitat token, save preferences. |
+| Change Apps Script code | Save, then **Manage deployments → pencil → New version**. See **Changing the Apps Script later**. |
+| Change recipient groups | Same as above. Also update **Known Recipient Groups** on the device if you added or renamed a group. |
+| Change token | Update Apps Script, deploy a new version, update the Hubitat token, save preferences. |
 | Create another recipient group | Add group in Apps Script, deploy, then create/configure another Hubitat virtual device. |
 
 ## Change log
